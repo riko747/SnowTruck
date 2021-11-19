@@ -1,10 +1,20 @@
 using UnityEngine;
-using System.Collections;
 
 public class TruckMovement : MonoBehaviour
 {
+    private bool rotationClamped = false;
+
     private void Update()
     {
+        if (transform.eulerAngles.y < 180 && transform.eulerAngles.y > 360)
+        {
+            rotationClamped = true;
+        }
+        else
+        {
+            rotationClamped = false;
+        }
+        Debug.Log("ROTATION: " + transform.eulerAngles.y);
         MoveTruck();
     }
 
@@ -17,15 +27,19 @@ public class TruckMovement : MonoBehaviour
             Touch touch = Input.GetTouch(0);
             if (touch.position.x > Screen.width / 2)
             {
-                //Debug.Log("Touched right side of a screen" + (Screen.width / 2 - touch.position.x));
                 Vector3 rotationVector = new Vector3(0, Screen.width / 2 - touch.position.x, 0);
-                transform.Rotate(rotationVector * -1 * Time.deltaTime);
+                if (!rotationClamped)
+                {
+                    transform.Rotate(rotationVector * -1 / 4 * Time.deltaTime);
+                }
             }
             if (touch.position.x < Screen.width / 2)
             {
-                //Debug.Log("Touched left side of a screen" + (Screen.width / 2 - touch.position.x));
                 Vector3 rotationVector = new Vector3(0, Screen.width / 2 - touch.position.x, 0);
-                transform.Rotate(rotationVector * -1 * Time.deltaTime);
+                if (!rotationClamped)
+                {
+                    transform.Rotate(rotationVector * -1 / 4 * Time.deltaTime);
+                }
             }
         }
     }
