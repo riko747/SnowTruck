@@ -4,19 +4,18 @@ using UnityEngine;
 interface ICheckTruckLocation
 {
     Vector3[] TruckPosition { get; }
+    float[] TruckRotation { get; }
     float TruckRotationY { get; }
     Vector3 NextCarPosition { get; }
-    bool MoveCar { get; set; }
 }
 
 public class TruckPath : MonoBehaviour, ICheckTruckLocation
 {
 
-    private Vector3[] truckPosition = new Vector3[5];
+    private Vector3[] truckPosition = new Vector3[10];
+    private float[] truckRotation = new float[10];
     private Vector3 _nextCarPosition;
     private float _truckRotationY;
-
-    private bool _moveCar = false;
 
     private byte _iterator;
 
@@ -25,6 +24,10 @@ public class TruckPath : MonoBehaviour, ICheckTruckLocation
     {
         get { return truckPosition; }
     }
+    public float[] TruckRotation
+    {
+        get { return truckRotation; }
+    }
     public float TruckRotationY
     {
         get { return _truckRotationY; }
@@ -32,11 +35,6 @@ public class TruckPath : MonoBehaviour, ICheckTruckLocation
     public Vector3 NextCarPosition
     {
         get { return _nextCarPosition; }
-    }
-    public bool MoveCar
-    {
-        get { return _moveCar; }
-        set { _moveCar = value; }
     }
     #endregion
 
@@ -57,11 +55,11 @@ public class TruckPath : MonoBehaviour, ICheckTruckLocation
                 _iterator = 0;
             }
             truckPosition[_iterator] = transform.position;
+            truckRotation[_iterator] = transform.rotation.eulerAngles.y + 90;
             _nextCarPosition = truckPosition[_iterator];
             _truckRotationY = transform.rotation.eulerAngles.y + 90;
-            _moveCar = true;
             _iterator++;
-            yield return new WaitForSeconds(1f);
+            yield return new WaitForSeconds(0.5f);
         }
     }
 }

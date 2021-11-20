@@ -1,35 +1,80 @@
 using UnityEngine;
+using System.Collections;
 
 public class CarMovement : MonoBehaviour
 {
-    private int _carSpeed = 12;
+    GameObject firstCar;
+
+    enum CarMovementState { carIsMoving, carIsNotMoving};
+
+    private int _carSpeed = 8;
+    CarMovementState carMovementState;
+
     private ICheckTruckLocation _checkTruckLocation;
 
-    Quaternion rotation;
+    private byte _iterator;
 
     private void Start()
     {
         _checkTruckLocation = GameObject.Find("Truck").GetComponent<ICheckTruckLocation>();
+        firstCar = GameObject.Find("Car");
+        if (gameObject.name == "Car")
+        {
+            Invoke("MoveCarCoroutine_Start", 2.5f);
+        }
+        else if (gameObject.name == "Car2")
+        {
+            Invoke("MoveCarCoroutine_Start", 3.5f);
+        }
+        carMovementState = CarMovementState.carIsNotMoving;
     }
 
     private void Update()
     {
-        if (_checkTruckLocation.MoveCar == true)
+        if (gameObject.name == "Car" && Vector3.Distance(transform.position, _checkTruckLocation.TruckPosition[_iterator]) <= 2)
         {
-            
-            if (transform.position == _checkTruckLocation.NextCarPosition)
+            _carSpeed = 2;
+        }
+        else if (gameObject.name == "Car" && Vector3.Distance(transform.position, _checkTruckLocation.TruckPosition[_iterator]) > 2)
+        {
+            _carSpeed = 8;
+        }
+
+        if (gameObject.name == "Car2" && Vector3.Distance(transform.position, firstCar.transform.position) <= 5)
+        {
+            _carSpeed = 0;
+        }
+        else if (gameObject.name == "Car2" && Vector3.Distance(transform.position, firstCar.transform.position) > 6)
+        {
+            _carSpeed = 8;
+        }
+
+        if (carMovementState == CarMovementState.carIsMoving)
+        {
+            transform.position = Vector3.MoveTowards(transform.position, _checkTruckLocation.TruckPosition[_iterator], _carSpeed * Time.deltaTime);
+            Quaternion rotation = Quaternion.Euler(new Vector3(0, _checkTruckLocation.TruckRotation[_iterator], 0));
+            transform.rotation = Quaternion.Lerp(transform.rotation, rotation, Time.deltaTime * 3);
+        }
+        if (transform.position == _checkTruckLocation.TruckPosition[_iterator])
+        {
+            carMovementState = CarMovementState.carIsNotMoving;
+        }
+    }
+
+    private void MoveCarCoroutine_Start() => StartCoroutine(MoveCarCoroutine());
+
+    private IEnumerator MoveCarCoroutine()
+    {
+        while (true)
+        {
+            if (_iterator == _checkTruckLocation.TruckPosition.Length - 1)
             {
-                _checkTruckLocation.MoveCar = false;
-                rotation = Quaternion.Euler(new Vector3(0, _checkTruckLocation.TruckRotationY, 0));
-                transform.rotation = rotation;
+                _iterator = 0;
             }
-            if (Vector3.Distance(transform.position, _checkTruckLocation.NextCarPosition) > 10)
-            {
-                _carSpeed = 30;
-                transform.position = Vector3.MoveTowards(transform.position, _checkTruckLocation.NextCarPosition, _carSpeed * Time.deltaTime);
-                rotation = Quaternion.Euler(new Vector3(0, _checkTruckLocation.TruckRotationY, 0));
-                transform.rotation = Quaternion.Slerp(transform.rotation, rotation, 2 * Time.deltaTime);
-            }
+            if (carMovementState != CarMovementState.carIsMoving)
+            carMovementState = CarMovementState.carIsMoving;
+            _iterator++;
+            yield return new WaitForSeconds(0.55f);
         }
     }
 }
