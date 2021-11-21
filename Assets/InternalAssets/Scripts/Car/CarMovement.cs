@@ -1,80 +1,142 @@
 using UnityEngine;
 using System.Collections;
 
+/// <summary>
+/// Car movement and rotation logic
+/// </summary>
 public class CarMovement : MonoBehaviour
 {
-    GameObject firstCar;
+    private const int DefaultCarSpeed = 8;
+    private const int SlowedCarSpeed = 2;
+    private const int RotationSpeed = 3;
+    private const int MinimalDistanceBetweenFirstCarAndTruck = 2;
+    private const int MinimalDistanceBetweenFirstCarAndSecondCar = 5;
+    private const float FirstCarDelayBeforeStart = 2.5f;
+    private const float SecondCarDelayBeforeStart = 3.5f;
 
-    enum CarMovementState { carIsMoving, carIsNotMoving};
+    private const string FirstCarGameobjectName = "Car";
+    private const string SecondCarGameobjectName = "Car2";
 
-    private int _carSpeed = 8;
-    CarMovementState carMovementState;
+    private const float SearchNextPathPointRefreshTime = .55f;
+    
+    enum CarMovementState { carIsMoving, carIsNotMoving };
+    private CarMovementState _carMovementState;
 
     private ICheckTruckLocation _checkTruckLocation;
+
+
+    private Vector3 _carPosition;
+    private GameObject _firstCar;
+
+    private int _carSpeed;
+    
 
     private byte _iterator;
 
     private void Start()
     {
         _checkTruckLocation = GameObject.Find("Truck").GetComponent<ICheckTruckLocation>();
-        firstCar = GameObject.Find("Car");
+        _firstCar = GameObject.Find("Car");
+        _carSpeed = DefaultCarSpeed;
+        _carMovementState = CarMovementState.carIsNotMoving;
+
+        LaunchCarsAfterDelay();
+    }
+
+    private void LaunchCarsAfterDelay()
+    {
         if (gameObject.name == "Car")
         {
-            Invoke("MoveCarCoroutine_Start", 2.5f);
+            Invoke("StartSearchPathCoroutine", FirstCarDelayBeforeStart);
         }
         else if (gameObject.name == "Car2")
         {
-            Invoke("MoveCarCoroutine_Start", 3.5f);
+            Invoke("StartSearchPathCoroutine", SecondCarDelayBeforeStart);
         }
-        carMovementState = CarMovementState.carIsNotMoving;
     }
 
     private void Update()
     {
-        if (gameObject.name == "Car" && Vector3.Distance(transform.position, _checkTruckLocation.TruckPosition[_iterator]) <= 2)
-        {
-            _carSpeed = 2;
-        }
-        else if (gameObject.name == "Car" && Vector3.Distance(transform.position, _checkTruckLocation.TruckPosition[_iterator]) > 2)
-        {
-            _carSpeed = 8;
-        }
+        _carPosition = transform.position;
+        LimitCarSpeed();
+        MoveCar();
+        PrepareToFindNextPathPoint();
+    }
 
-        if (gameObject.name == "Car2" && Vector3.Distance(transform.position, firstCar.transform.position) <= 5)
-        {
-            _carSpeed = 0;
-        }
-        else if (gameObject.name == "Car2" && Vector3.Distance(transform.position, firstCar.transform.position) > 6)
-        {
-            _carSpeed = 8;
-        }
-
-        if (carMovementState == CarMovementState.carIsMoving)
-        {
-            transform.position = Vector3.MoveTowards(transform.position, _checkTruckLocation.TruckPosition[_iterator], _carSpeed * Time.deltaTime);
-            Quaternion rotation = Quaternion.Euler(new Vector3(0, _checkTruckLocation.TruckRotation[_iterator], 0));
-            transform.rotation = Quaternion.Lerp(transform.rotation, rotation, Time.deltaTime * 3);
-        }
+    private void PrepareToFindNextPathPoint()
+    {
         if (transform.position == _checkTruckLocation.TruckPosition[_iterator])
         {
-            carMovementState = CarMovementState.carIsNotMoving;
+            _carMovementState = CarMovementState.carIsNotMoving;
         }
     }
 
-    private void MoveCarCoroutine_Start() => StartCoroutine(MoveCarCoroutine());
+    private void MoveCar()
+    {
+        if (_carMovementState == CarMovementState.carIsMoving)
+        {
+            transform.position = Vector3.MoveTowards(_carPosition, _checkTruckLocation.TruckPosition[_iterator], _carSpeed * Time.deltaTime);
+            Quaternion rotation = Quaternion.Euler(new Vector3(0, _checkTruckLocation.TruckRotation[_iterator], 0));
+            transform.rotation = Quaternion.Lerp(transform.rotation, rotation, Time.deltaTime * RotationSpeed);
+        }
+    }
 
-    private IEnumerator MoveCarCoroutine()
+    private void LimitCarSpeed()
+    {
+        LimitFirstCarSpeed();
+        LimitSecondCarSpeed();
+    }
+
+    private void LimitFirstCarSpeed()
+    {
+        if (gameObject.name == FirstCarGameobjectName && Vector3.Distance(_carPosition, _checkTruckLocation.TruckPosition[_iterator]) <= MinimalDistanceBetweenFirstCarAndTruck)
+        {
+            _carSpeed = SlowedCarSpeed;
+        }
+        else if (gameObject.name == FirstCarGameobjectName && Vector3.Distance(_carPosition, _checkTruckLocation.TruckPosition[_iterator]) > MinimalDistanceBetweenFirstCarAndTruck)
+        {
+            _carSpeed = DefaultCarSpeed;
+        }
+    }
+
+    private void LimitSecondCarSpeed()
+    {
+        if (gameObject.name == SecondCarGameobjectName && Vector3.Distance(_carPosition, _firstCar.transform.position) <= MinimalDistanceBetweenFirstCarAndSecondCar)
+        {
+            _carSpeed = SlowedCarSpeed;
+        }
+        else if (gameObject.name == SecondCarGameobjectName && Vector3.Distance(_carPosition, _firstCar.transform.position) > MinimalDistanceBetweenFirstCarAndSecondCar)
+        {
+            _carSpeed = DefaultCarSpeed;
+        }
+    }
+    
+    private void StartSearchPathCoroutine() => StartCoroutine(SearchPathCoroutine());
+
+    private IEnumerator SearchPathCoroutine()
     {
         while (true)
         {
-            if (_iterator == _checkTruckLocation.TruckPosition.Length - 1)
-            {
-                _iterator = 0;
-            }
-            if (carMovementState != CarMovementState.carIsMoving)
-            carMovementState = CarMovementState.carIsMoving;
+            RefreshIterator();
+            ChangeCarMovementStateToActive();
             _iterator++;
-            yield return new WaitForSeconds(0.55f);
+            yield return new WaitForSeconds(SearchNextPathPointRefreshTime);
+        }
+    }
+
+    private void ChangeCarMovementStateToActive()
+    {
+        if (_carMovementState != CarMovementState.carIsMoving)
+        {
+            _carMovementState = CarMovementState.carIsMoving;
+        }
+    }
+
+    private void RefreshIterator()
+    {
+        if (_iterator == _checkTruckLocation.TruckPosition.Length - 1)
+        {
+            _iterator = 0;
         }
     }
 }

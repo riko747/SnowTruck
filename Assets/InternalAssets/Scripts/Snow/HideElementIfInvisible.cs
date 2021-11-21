@@ -1,7 +1,11 @@
 using UnityEngine;
 
+/// <summary>
+/// Deactivation behind the screen snow logic
+/// </summary>
 public class HideElementIfInvisible : MonoBehaviour
 {
+    private const int VisibleDistance = 35;
     GameObject truck;
 
     private void Start()
@@ -11,7 +15,12 @@ public class HideElementIfInvisible : MonoBehaviour
 
     private void Update()
     {
-        if (transform.position.x > truck.transform.position.x + 35 || transform.position.x < truck.transform.position.x - 35)
+        DeactivateFarSnowWay();
+    }
+
+    private void DeactivateFarSnowWay()
+    {
+        if (transform.position.x > truck.transform.position.x + VisibleDistance && transform.position.x < truck.transform.position.x - VisibleDistance)
         {
             gameObject.SetActive(false);
         }

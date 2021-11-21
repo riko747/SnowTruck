@@ -1,24 +1,32 @@
 using System.Collections;
 using UnityEngine;
 
+/// <summary>
+/// Clear snow spawn and reuse mask logic
+/// </summary>
 public class ClearSnow : MonoBehaviour
 {
+    private const int MaxMasksAmount = 15;
+    private const float MaskSpawnInterval = 0.5f;
+    private const int DefaultMaskInstantiationRotationX = 90;
+    private const int DefaultMaskInstantiationRotationZ = 0;
+
     private ICheckTruckLocation _checkTruckLocation;
 
     private byte _iterator = 0;
     private bool _canclelInstantiation = false;
 
-    Transform scratch;
-    GameObject maskPrefab;
-    Vector3 maskInstantiationPosition;
-    Quaternion maskInstantiationRotation;
+    private Transform _scratchPool;
+    private GameObject _maskPrefab;
+    private Vector3 _maskInstantiationPosition;
+    private Quaternion _maskInstantiationRotation;
 
 
 
     private void Start()
     {
-        maskPrefab = Resources.Load<GameObject>("SpriteMask");
-        scratch = GameObject.Find("Scratch").transform;
+        _maskPrefab = Resources.Load<GameObject>("Prefabs/SpriteMask");
+        _scratchPool = GameObject.Find("Scratch").transform;
         _checkTruckLocation = GetComponent<ICheckTruckLocation>();
     }
 
@@ -36,28 +44,36 @@ public class ClearSnow : MonoBehaviour
     {
         while (true)
         {
-            if (_iterator >= 30)
-            {
-                _canclelInstantiation = true;
-                _iterator = 0;
-            }
-            maskInstantiationPosition = new Vector3(transform.position.x, transform.position.y, transform.position.z);
-            maskInstantiationRotation = Quaternion.Euler(90, _checkTruckLocation.TruckRotationY, 0);
+            RefreshIteratorAndStopMasksSpawn();
+            _maskInstantiationPosition = new Vector3(transform.position.x, transform.position.y, transform.position.z);
+            _maskInstantiationRotation = Quaternion.Euler(DefaultMaskInstantiationRotationX, _checkTruckLocation.TruckRotationY, DefaultMaskInstantiationRotationZ);
             if (!_canclelInstantiation)
             {
-                GameObject maskInstance = Instantiate(maskPrefab, maskInstantiationPosition, maskInstantiationRotation, scratch);
+                GameObject maskInstance = Instantiate(_maskPrefab, transform.position, _maskInstantiationRotation, _scratchPool);
             }
             else
             {
-                scratch.GetChild(_iterator).position = maskInstantiationPosition;
-                scratch.GetChild(_iterator).rotation = maskInstantiationRotation;
-                scratch.GetChild(_iterator).gameObject.SetActive(true);
+                ReuseMasks();
             }
             _iterator += 1;
 
-            yield return new WaitForSeconds(0.5f);
+            yield return new WaitForSeconds(MaskSpawnInterval);
         }
     }
 
+    private void RefreshIteratorAndStopMasksSpawn()
+    {
+        if (_iterator >= MaxMasksAmount)
+        {
+            _canclelInstantiation = true;
+            _iterator = 0;
+        }
+    }
 
+    private void ReuseMasks()
+    {
+        _scratchPool.GetChild(_iterator).position = _maskInstantiationPosition;
+        _scratchPool.GetChild(_iterator).rotation = _maskInstantiationRotation;
+        _scratchPool.GetChild(_iterator).gameObject.SetActive(true);
+    }
 }
